@@ -106,7 +106,12 @@ class Feedback < ApplicationRecord
   def send_to_chat
     return if chat_user_id.present?
 
-    return if Feedback.where(post: post, feedback_type: feedback_type).where.not(id: id).exists?
+    feedback_categories = [:is_positive?, :is_negative?, :is_naa?]
+
+    return if post.feedbacks.where.not(id: id).to_a.select { |other_feedback|
+      # Compare f and self on each of feedback_categories. If they're completely equal, bail
+      [other_feedback, self].map { |f| feedback_categories.map { |category| f.send(category) } }.uniq.length == 1
+    }.exists?
 
     message = "#{feedback_type} by #{user&.username || user_name}"
     unless post.id == Post.last.id
